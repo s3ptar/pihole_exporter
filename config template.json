@@ -1,0 +1,6 @@
+{
+    "pihole": {
+        "host": "10.10.10.10",
+        "webpasword": "my_secure_password"
+    }
+} 
