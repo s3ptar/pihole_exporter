@@ -2,5 +2,11 @@
     "pihole": {
         "host": "10.10.10.10",
         "webpasword": "my_secure_password"
+    },
+    "influxdb": {
+        "url" : "http://<INFLUX-IP>:8086",
+        "token" : "<DEIN_INFLUX_API_TOKEN>",
+        "org" : "<DEINE_ORG>",
+        "bucket" : "<DEIN_BUCKET>"
     }
 } 

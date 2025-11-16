@@ -15,6 +15,8 @@ import logging
 import sys
 import json
 import requests
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from datetime import datetime
 """#####################################################################
 # Informations
 #####################################################################"""
@@ -39,12 +41,17 @@ import requests
 # local Variable
 #####################################################################"""
 logger = logging.getLogger(__name__)
-
-
+pi_hole_session_id = ""
 """#####################################################################
 # Constant
 #####################################################################"""
-
+api_requests = ['/stats/summary', 
+                '/info/version', 
+                '/stats/upstreams', 
+                '/stats/top_domains?blocked=true&count=20',
+                '/stats/top_clients?blocked=true&count=20',
+                '/stats/recent_blocked?count=20',
+                ]
 """#####################################################################
 # Local Funtions
 #####################################################################"""
@@ -98,8 +105,44 @@ if __name__ == "__main__":
 
     response = requests.post(url, json=payload, verify=False)
     logger.debug(response.json())
-    pi_hole_respose_sid = response.json()['session']['sid']
-    logger.debug(f" sid is : { pi_hole_respose_sid }")
+    try:
+        pi_hole_session_id = response.json()['session']['sid']
+        logger.debug(f" sid is : { pi_hole_session_id }")
+    except Exception as e:
+        logger.error(f"Error reading pihole sid: {e}")
+        sys.exit(1)
+ 
+
+       
+    # ------ Daten abfragen ------
+    summary_payload = {"sid": pi_hole_session_id}   # SID muss im Body stehen
+    for req in api_requests:
+        summary_url = f"http://{ js['pihole']['host'] }/api{ req }"
+    
+        summary_response = requests.get(summary_url, json=summary_payload, verify=False)
+        summary_data = summary_response.json()
+    
+        logger.debug(f"Summary-Daten:{ summary_data }")
+
+        if req == '/stats/summary':
+            # ------ InfluxDB Verbindung ------
+            influx_client = InfluxDBClient(
+                url=js['influxdb']['url'],
+                token=js['influxdb']['token'],
+                org=js['influxdb']['org']
+            )
+            write_api = influx_client.write_api()
+
+            point = (
+                Point("pihole_summary")
+                .field("dns_queries_today", int(summary_data.get("dns_queries_today", 0)))
+                .field("ads_blocked_today", int(summary_data.get("ads_blocked_today", 0)))
+                .field("ads_percentage_today", float(summary_data.get("ads_percentage_today", 0)))
+                .field("domains_being_blocked", int(summary_data.get("domains_being_blocked", 0)))
+                .time(datetime.now())
+            )
+            write_api.write(bucket=js['influxdb']['bucket'], org=js['influxdb']['org'], record=point)
+
 
     logger.info('Finished')
 
