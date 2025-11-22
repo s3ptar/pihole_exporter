@@ -1,12 +1,26 @@
 {
     "pihole": {
         "host": "10.10.10.10",
-        "webpasword": "my_secure_password"
+        "webpasword": "my_secure_password",
+        "requests" : [
+            "/stats/summary", 
+            "/info/version", 
+            "/stats/upstreams", 
+            "/stats/top_domains?blocked=true&count=20",
+            "/stats/top_clients?blocked=true&count=20",
+            "/stats/recent_blocked?count=20"
+        ]
+            
     },
     "influxdb": {
         "url" : "http://<INFLUX-IP>:8086",
         "token" : "<DEIN_INFLUX_API_TOKEN>",
         "org" : "<DEINE_ORG>",
         "bucket" : "<DEIN_BUCKET>"
+    },
+    "logging": {
+        "level": "info",
+        "log_path": "./app.log",
+        "log_output" : "file"
     }
 } 
