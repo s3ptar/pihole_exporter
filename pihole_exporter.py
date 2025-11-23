@@ -27,7 +27,14 @@ from datetime import datetime
 # Declarations
 #####################################################################"""
 
-
+requests_urls = [
+    "/stats/summary", 
+    "/info/version", 
+    "/stats/upstreams", 
+    "/stats/top_domains?blocked=true&count=20",
+    "/stats/top_clients?blocked=true&count=20",
+    "/stats/recent_blocked?count=20"
+]
 
 """#####################################################################
 # Constant
@@ -52,7 +59,47 @@ pi_hole_session_id = ""
 # Local Funtions
 #####################################################################"""
 
+"""#####################################################################
+#! @fn           write_summary_data(url, bucket, org, measurement, data, key="", tag="")
+#  @ brief       write summary to influxdb
+#  @ param       none
+#  @ exception   none
+#  @ return      none
+#####################################################################"""
+def write_summary_data(url, bucket, org, measurement, data, key="", tag=""):
+    # auf daten prüfen und ggf weiter absteigen
+    
+    # object anlegen
+    point = influxdb_client.Point(measurement)
+    
+    # 
+    for fields in data:
+        point.tag(key, fields) if key != "" else None
+        # prüfen ob noch mehr daten in den feldern sind
+        if isinstance(data[fields], dict):
+            # ja => rekursiver aufruf
+            write_summary_data(url, bucket, org, measurement, data[fields], key=fields)
+        else:
+            point.field(fields, int(data[fields]))
+    #        
+        #    for field in summary_data[tags]:
+        #            point = influxdb_client.Point("pihole_metrics")
+        #            point.tag("type", req.strip('/').replace('/', '_'))
+        #            point.tag("category", tags)
+        #            point.field(field, summary_data[tags][field])
+        #            point.time(datetime.now())
+        #            p = influxdb_client.Point("my_measurement").tag("location", "Prague").field("temperature", 25.3)
+    point.time(datetime.now())
+    client = influxdb_client.InfluxDBClient(
+        url=url,
+        token=token,
+        org=org
+    )
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+    logger.debug(f"Written point: {point.to_line_protocol()}")
 
+    
 
 
 
@@ -96,7 +143,7 @@ if __name__ == "__main__":
     ### ---------- read pihole sid ---------- ###
     url = f"http://{ js['pihole']['host'] }/api/auth"
     payload = {
-        "password": f"{js['pihole']['webpasword'] }"
+        "password": f"{ js['pihole']['webpasword'] }"
     }
 
     response = requests.post(url, json=payload, verify=False)
@@ -125,15 +172,32 @@ if __name__ == "__main__":
 
     # ------ Daten abfragen ------
     summary_payload = {"sid": pi_hole_session_id}   # SID muss im Body stehen
-    #for req in api_requests:
-    for req in js['pihole']['requests']:
-        summary_url = f"http://{ js['pihole']['host'] }/api{ req }"
-    
-        summary_response = requests.get(summary_url, json=summary_payload, verify=False)
-        summary_data = summary_response.json()
+
+    for req in js['pihole']['request_config']:
         
-        logger.debug(f"Summary-Daten:{ summary_url }")
-        logger.debug(f"Summary-Daten:{ summary_data }")
+        # prüfen ob summaray abgerufen werden soll
+        if js['pihole']['request_config'][req] == 1 and "summary" in req:
+            logger.debug(f"process { req } data")
+            summary_url = f"http://{ js['pihole']['host'] }/api/stats/summary"
+            summary_response = requests.get(summary_url, json=summary_payload, verify=False)
+            summary_data = summary_response.json()
+
+            write_summary_data(url, bucket, org, "summary", summary_data, key="type")
+
+
+    #for req in api_requests:
+    #for req in js['pihole']['requests']:
+    #    summary_url = f"http://{ js['pihole']['host'] }/api{ req }"
+    
+    #    summary_response = requests.get(summary_url, json=summary_payload, verify=False)
+    #    summary_data = summary_response.json()
+        
+    #    create_influx_fields(bucket, org, summary_data, "summary")
+        
+    #    logger.debug(f"Request:{ req }")
+
+        #logger.debug(f"Summary-Daten:{ summary_url }")
+        #logger.debug(f"Summary-Daten:{ summary_data }")
 
         # ------ Daten in InfluxDB schreiben ------
           
