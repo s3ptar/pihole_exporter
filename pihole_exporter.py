@@ -67,20 +67,57 @@ pi_hole_session_id = ""
 #  @ return      none
 #####################################################################"""
 def write_summary_data(url, bucket, org, measurement, data, key="", tag=""):
+
+    client = influxdb_client.InfluxDBClient(
+        url=url,
+        token=token,
+        org=org
+    )
+    
     # auf daten prüfen und ggf weiter absteigen
     
-    # object anlegen
+    # -------------- queries ----------------------------------------------
     point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "queries")
+    point.field("total", int(summary_data['queries']['total']))
+    point.field("total", int(summary_data['queries']['percent_blocked']))
+    point.field("total", int(summary_data['queries']['unique_domains']))
+    point.field("total", int(summary_data['queries']['forwarded']))
+    point.field("total", int(summary_data['queries']['frequency']))
+    point.field("total", int(summary_data['queries']['total']))
+    point.field("total", int(summary_data['queries']['total']))
+    point.time(datetime.now())
+
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+
+    # -------------- queries - types ----------------------------------------------
+    point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "queries")
+    point.field("total", int(summary_data['queries']['total']))
+    point.field("total", int(summary_data['queries']['percent_blocked']))
+    point.field("total", int(summary_data['queries']['unique_domains']))
+    point.field("total", int(summary_data['queries']['forwarded']))
+    point.field("total", int(summary_data['queries']['frequency']))
+    point.field("total", int(summary_data['queries']['total']))
+    point.field("total", int(summary_data['queries']['total']))
+    point.time(datetime.now())
+
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+
     
     # 
-    for fields in data:
-        point.tag(key, fields) if key != "" else None
-        # prüfen ob noch mehr daten in den feldern sind
-        if isinstance(data[fields], dict):
-            # ja => rekursiver aufruf
-            write_summary_data(url, bucket, org, measurement, data[fields], key=fields)
-        else:
-            point.field(fields, int(data[fields]))
+    #for fields in data:
+    #    point.tag(key, fields) if key != "" else None
+    #    # prüfen ob noch mehr daten in den feldern sind
+    #    if isinstance(data[fields], dict):
+    #        # ja => rekursiver aufruf
+    #        write_summary_data(url, bucket, org, measurement, data[fields], key=fields)
+    #    else:
+    #        point.field(fields, int(data[fields]))
     #        
         #    for field in summary_data[tags]:
         #            point = influxdb_client.Point("pihole_metrics")
@@ -89,14 +126,9 @@ def write_summary_data(url, bucket, org, measurement, data, key="", tag=""):
         #            point.field(field, summary_data[tags][field])
         #            point.time(datetime.now())
         #            p = influxdb_client.Point("my_measurement").tag("location", "Prague").field("temperature", 25.3)
-    point.time(datetime.now())
-    client = influxdb_client.InfluxDBClient(
-        url=url,
-        token=token,
-        org=org
-    )
-    write_api = client.write_api(write_options=SYNCHRONOUS)  
-    write_api.write(bucket, org, record=point)
+    #point.time(datetime.now())
+    
+    
     logger.debug(f"Written point: {point.to_line_protocol()}")
 
     
