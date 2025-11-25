@@ -81,12 +81,12 @@ def write_summary_data(url, bucket, org, measurement, data, key="", tag=""):
     point.tag("location", "home")
     point.tag("summary", "queries")
     point.field("total", int(summary_data['queries']['total']))
-    point.field("total", int(summary_data['queries']['percent_blocked']))
-    point.field("total", int(summary_data['queries']['unique_domains']))
-    point.field("total", int(summary_data['queries']['forwarded']))
-    point.field("total", int(summary_data['queries']['frequency']))
-    point.field("total", int(summary_data['queries']['total']))
-    point.field("total", int(summary_data['queries']['total']))
+    point.field("percent_blocked", int(summary_data['queries']['percent_blocked']))
+    point.field("unique_domains", int(summary_data['queries']['unique_domains']))
+    point.field("forwarded", int(summary_data['queries']['forwarded']))
+    point.field("frequency", int(summary_data['queries']['frequency']))
+    point.field("cached", int(summary_data['queries']['cached']))
+    point.field("frequency", int(summary_data['queries']['frequency']))
     point.time(datetime.now())
 
     write_api = client.write_api(write_options=SYNCHRONOUS)  
@@ -96,18 +96,54 @@ def write_summary_data(url, bucket, org, measurement, data, key="", tag=""):
     point = influxdb_client.Point(measurement)
     point.tag("location", "home")
     point.tag("summary", "queries")
-    point.field("total", int(summary_data['queries']['total']))
-    point.field("total", int(summary_data['queries']['percent_blocked']))
-    point.field("total", int(summary_data['queries']['unique_domains']))
-    point.field("total", int(summary_data['queries']['forwarded']))
-    point.field("total", int(summary_data['queries']['frequency']))
-    point.field("total", int(summary_data['queries']['total']))
-    point.field("total", int(summary_data['queries']['total']))
+    point.tag("queries", "types")
+    for type in summary_data['queries']['types']:
+        point.field(type, int(summary_data['queries']['types'][type]))
     point.time(datetime.now())
-
     write_api = client.write_api(write_options=SYNCHRONOUS)  
     write_api.write(bucket, org, record=point)
 
+    # -------------- queries - status ----------------------------------------------
+    point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "queries")
+    point.tag("queries", "status")
+    for state in summary_data['queries']['status']:
+        point.field(state, int(summary_data['queries']['status'][state]))
+    point.time(datetime.now())
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+
+    # -------------- queries - replies ----------------------------------------------
+    point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "queries")
+    point.tag("queries", "replies")
+    for reply in summary_data['queries']['replies']:
+        point.field(reply, int(summary_data['queries']['status'][reply]))
+    point.time(datetime.now())
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+
+    # -------------- clients ----------------------------------------------
+    point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "clients")
+    for client in summary_data['clients']:
+        point.field(client, int(summary_data['clients'][client]))
+    point.time(datetime.now())
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
+
+    # -------------- gravity ----------------------------------------------
+    point = influxdb_client.Point(measurement)
+    point.tag("location", "home")
+    point.tag("summary", "gravity")
+    for grav in summary_data['gravity']:
+        point.field(client, int(summary_data['gravity'][grav]))
+    point.time(datetime.now())
+    write_api = client.write_api(write_options=SYNCHRONOUS)  
+    write_api.write(bucket, org, record=point)
     
     # 
     #for fields in data:
